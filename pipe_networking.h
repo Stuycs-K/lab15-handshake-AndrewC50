@@ -20,6 +20,7 @@
 #define ACK 2
 #define MESSAGE 3
 #define EXIT 4
+#define wkp "wkp"
 
 
 int server_handshake(int *to_client);

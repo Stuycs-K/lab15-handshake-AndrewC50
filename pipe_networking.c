@@ -11,11 +11,19 @@
   =========================*/
 int server_setup() {
   int from_client = 0;
+  mkfifo(wkp, 0666);
+  int fd = open(wkp, O_RDONLY);
+  char buff[256];
+  while(1) {
+    if(read(fd, buff, len(buff)) > 0) {
+      remove(wkp);
+    }
+  }
   return from_client;
 }
 
 /*=========================
-  server_handshake 
+  server_handshake
   args: int * to_client
 
   Performs the server side pipe 3 way handshake.
@@ -25,6 +33,13 @@ int server_setup() {
   =========================*/
 int server_handshake(int *to_client) {
   int from_client;
+  int fds[2];
+  *to_client = pipe(fds);
+  if(*to_client == -1) {
+    printf("%s\n", strerror(errno));
+    return -1;
+  }
+  from_client = server_setup();
   return from_client;
 }
 
@@ -56,5 +71,3 @@ int server_connect(int from_client) {
   int to_client  = 0;
   return to_client;
 }
-
-
