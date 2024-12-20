@@ -15,8 +15,11 @@ int server_setup() {
   int fd = open(wkp, O_RDONLY);
   char buff[256];
   while(1) {
-    if(read(fd, buff, len(buff)) > 0) {
+    if(read(fd, buff, sizeof(buff)) > 0) {
       remove(wkp);
+      from_client = open(buff, O_WRONLY);
+      printf("oiefhwi%s\n", buff);
+      break;
     }
   }
   return from_client;
@@ -32,6 +35,7 @@ int server_setup() {
   returns the file descriptor for the upstream pipe (see server setup).
   =========================*/
 int server_handshake(int *to_client) {
+  printf("Server\n");
   int from_client;
   int fds[2];
   *to_client = pipe(fds);
@@ -40,6 +44,7 @@ int server_handshake(int *to_client) {
     return -1;
   }
   from_client = server_setup();
+  printf("Returning\n");
   return from_client;
 }
 
@@ -54,7 +59,11 @@ int server_handshake(int *to_client) {
   returns the file descriptor for the downstream pipe.
   =========================*/
 int client_handshake(int *to_server) {
+  printf("Client handshake\n");
   int from_server;
+  int fd = open(wkp, O_WRONLY);
+  int bytes = write(fd, "getpid()", 255);
+  printf("Client wrote %d bytes\n", bytes);
   return from_server;
 }
 
