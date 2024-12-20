@@ -18,7 +18,7 @@ int server_setup() {
     if(read(fd, buff, sizeof(buff)) > 0) {
       remove(wkp);
       from_client = open(buff, O_WRONLY);
-      printf("oiefhwi%s\n", buff);
+      printf("%s\n", buff);
       break;
     }
   }
@@ -37,14 +37,13 @@ int server_setup() {
 int server_handshake(int *to_client) {
   printf("Server\n");
   int from_client;
-  int fds[2];
-  *to_client = pipe(fds);
+  from_client = server_setup();
+  write(from_client, "Message from server", 255);
+  printf("Returning\n");
   if(*to_client == -1) {
     printf("%s\n", strerror(errno));
     return -1;
   }
-  from_client = server_setup();
-  printf("Returning\n");
   return from_client;
 }
 
@@ -61,9 +60,22 @@ int server_handshake(int *to_client) {
 int client_handshake(int *to_server) {
   printf("Client handshake\n");
   int from_server;
-  int fd = open(wkp, O_WRONLY);
-  int bytes = write(fd, "getpid()", 255);
+  int wkp_fd = open(wkp, O_WRONLY);
+  char buff[256];
+  snprintf(buff, sizeof(buff), "%d", getpid());
+  int bytes = write(wkp_fd, buff, 255);
   printf("Client wrote %d bytes\n", bytes);
+
+  char pid [256];
+  snprintf(pid, sizeof(pid), "%d", getpid());
+  mkfifo(pid, 0666);
+  int pp_fd = open(pid, O_RDONLY);
+  char pp_buff[256];
+  while(1) {
+    if(read(pp_fd, pp_buff, sizeof(pp_buff)) > 0) {
+      printf("Recieved message on pp from server: %s\n", pp_buff);
+    }
+  }
   return from_server;
 }
 
