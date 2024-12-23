@@ -9,9 +9,9 @@ int main() {
   int rec_s = 0;
   int wr_s = 92;
   printf("Fds: to_client: %d from_client %d\n", to_client, from_client);
-  read(from_client, &rec_s, 10);
+  read(from_client, &rec_s, sizeof(int));
   printf("Recieved message %d from client\n", rec_s);
   // sleep(1);
-  write(to_client, &wr_s, 10);
+  write(to_client, &wr_s, sizeof(int));
   printf("Wrote message %d to client\n", wr_s);
 }
