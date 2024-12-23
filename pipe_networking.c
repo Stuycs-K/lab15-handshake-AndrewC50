@@ -10,19 +10,8 @@
   returns the file descriptor for the upstream pipe.
   =========================*/
 int server_setup() {
-  int from_client = 0;
-  mkfifo(wkp, 0666);
-  int fd = open(wkp, O_RDONLY);
-  char buff[256];
-  while(1) {
-    if(read(fd, buff, sizeof(buff)) > 0) {
-      remove(wkp);
-      from_client = open(buff, O_WRONLY);
-      printf("%s\n", buff);
-      break;
-    }
-  }
-  return from_client;
+  //Not used: need PPid in server_handshake
+  return 0;
 }
 
 /*=========================
@@ -36,15 +25,53 @@ int server_setup() {
   =========================*/
 int server_handshake(int *to_client) {
   printf("Server\n");
-  int from_client;
-  from_client = server_setup();
-  write(from_client, "Message from server", 255);
-  printf("Returning\n");
-  if(*to_client == -1) {
+  mkfifo(wkp, 0666);
+  int wkp_fd = open(wkp, O_RDONLY);
+  if(wkp_fd == -1) {
     printf("%s\n", strerror(errno));
-    return -1;
   }
-  return from_client;
+  char cl_pid[256];
+  //Block until connection
+  if(read(wkp_fd, cl_pid, sizeof(cl_pid)) < 0) {
+    printf("%s\n", strerror(errno));
+    exit(1);
+  }
+  remove(wkp);
+  close(wkp_fd);
+
+  //Open cl_pid, which contains the pid to open for the pp. Opens with write permissions
+  int wr_fd = open(cl_pid, O_WRONLY);
+  if(wr_fd == -1) {
+    printf("%s\n", strerror(errno));
+    exit(1);
+  }
+  char message[256];
+  snprintf(message, sizeof(message), "%d", rand());
+  if(write(wr_fd, message, strlen(message)) == -1) {
+    printf("%s\n", strerror(errno));
+    exit(1);
+  }
+
+  int rd_fd = open(cl_pid, O_RDONLY);
+  if(rd_fd == -1) {
+    printf("%s\n", strerror(errno));
+  }
+  char synack[256];
+  printf("Server reading from fd %d\n", rd_fd);
+  if (read(rd_fd, synack, sizeof(synack)) < 0) {
+    printf("%s\n", strerror(errno));
+    exit(1);
+  }
+  char expected[256];
+  strcpy(expected, message);
+  strcat(expected, "1");
+  if (strcmp(synack, expected) == 0) {
+    printf("Handshake Complete, message was: %s\n", synack);
+  } else {
+    printf("Error in handshake from client to server\n");
+  }
+  *to_client = wr_fd;
+  return rd_fd;
 }
 
 
@@ -58,25 +85,46 @@ int server_handshake(int *to_client) {
   returns the file descriptor for the downstream pipe.
   =========================*/
 int client_handshake(int *to_server) {
-  printf("Client handshake\n");
-  int from_server;
-  int wkp_fd = open(wkp, O_WRONLY);
-  char buff[256];
-  snprintf(buff, sizeof(buff), "%d", getpid());
-  int bytes = write(wkp_fd, buff, 255);
-  printf("Client wrote %d bytes\n", bytes);
-
   char pid [256];
   snprintf(pid, sizeof(pid), "%d", getpid());
   mkfifo(pid, 0666);
-  int pp_fd = open(pid, O_RDONLY);
-  char pp_buff[256];
-  while(1) {
-    if(read(pp_fd, pp_buff, sizeof(pp_buff)) > 0) {
-      printf("Recieved message on pp from server: %s\n", pp_buff);
-    }
+  // Write to WKP
+  printf("Client handshake\n");
+  int wkp_fd = open(wkp, O_WRONLY);
+  if(wkp_fd == -1) {
+    printf("%s\n", strerror(errno));
+    exit(1);
   }
-  return from_server;
+  int bytes = write(wkp_fd, pid, 255);
+  printf("Client wrote %d bytes\n", bytes);
+  close(wkp_fd);
+
+  int rd_fd = open(pid, O_RDONLY);
+  if(rd_fd == -1) {
+    printf("%s\n", strerror(errno));
+    exit(1);
+  }
+  char pp_buff[256];
+  if(read(rd_fd, pp_buff, sizeof(pp_buff)) < 0) {
+    printf("%s\n", strerror(errno));
+    exit(1);
+  }
+  printf("Recieved message on pp from server: %s\n", pp_buff);
+  int wr_fd = open(pid, O_WRONLY);
+  if(wr_fd == -1) {
+    printf("%s\n", strerror(errno));
+    exit(1);
+  }
+  char synack[256];
+  snprintf(synack, 255, "%s1", pp_buff);
+  int bytes_wrote = write(wr_fd, synack, 255);
+  if(bytes_wrote == -1) {
+    printf("%s\n", strerror(errno));
+    exit(1);
+  }
+  remove(pid);
+  *to_server = wr_fd;
+  return rd_fd;
 }
 
 
