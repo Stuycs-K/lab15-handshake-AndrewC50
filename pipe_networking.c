@@ -11,7 +11,13 @@
   =========================*/
 int server_setup() {
   //Not used: need PPid in server_handshake
-  return 0;
+  mkfifo(WKP, 0666);
+  int wr_fd = open(WKP, O_RDONLY);
+  if(wr_fd == -1) {
+    printf("%s\n", strerror(errno));
+  }
+  remove(WKP);
+  return wr_fd;
 }
 
 /*=========================
@@ -25,35 +31,28 @@ int server_setup() {
   =========================*/
 int server_handshake(int *to_client) {
   printf("Server\n");
-  mkfifo(wkp, 0666);
-  int wkp_fd = open(wkp, O_RDONLY);
-  if(wkp_fd == -1) {
-    printf("%s\n", strerror(errno));
-  }
   char cl_pid[256];
   //Block until connection
-  if(read(wkp_fd, cl_pid, sizeof(cl_pid)) < 0) {
-    printf("%s\n", strerror(errno));
+  int rd_fd = server_setup();
+  if(rd_fd == -1) {
+    printf("Error Check%s\n", strerror(errno));
     exit(1);
   }
-  remove(wkp);
-  close(wkp_fd);
+  if(read(rd_fd, cl_pid, sizeof(cl_pid)) < 0) {
+    printf("Reading %s\n", strerror(errno));
+    exit(1);
+  }
 
   //Open cl_pid, which contains the pid to open for the pp. Opens with write permissions
+  // int wr_fd = open(wkp, O_WRONLY);
   int wr_fd = open(cl_pid, O_WRONLY);
-  if(wr_fd == -1) {
-    printf("%s\n", strerror(errno));
-    exit(1);
-  }
   char message[256];
   snprintf(message, sizeof(message), "%d", rand());
   if(write(wr_fd, message, strlen(message)) == -1) {
-    printf("%s\n", strerror(errno));
+    printf("Writing %s\n", strerror(errno));
     exit(1);
   }
-
-  int rd_fd = open(cl_pid, O_RDONLY);
-  if(rd_fd == -1) {
+  if(wr_fd == -1) {
     printf("%s\n", strerror(errno));
   }
   char synack[256];
@@ -90,14 +89,13 @@ int client_handshake(int *to_server) {
   mkfifo(pid, 0666);
   // Write to WKP
   printf("Client handshake\n");
-  int wkp_fd = open(wkp, O_WRONLY);
-  if(wkp_fd == -1) {
+  int wr_fd = open(WKP, O_WRONLY);
+  if(wr_fd == -1) {
     printf("%s\n", strerror(errno));
     exit(1);
   }
-  int bytes = write(wkp_fd, pid, 255);
+  int bytes = write(wr_fd, pid, 255);
   printf("Client wrote %d bytes\n", bytes);
-  close(wkp_fd);
 
   int rd_fd = open(pid, O_RDONLY);
   if(rd_fd == -1) {
@@ -110,7 +108,7 @@ int client_handshake(int *to_server) {
     exit(1);
   }
   printf("Recieved message on pp from server: %s\n", pp_buff);
-  int wr_fd = open(pid, O_WRONLY);
+  // int wr_fd = open(pid, O_WRONLY);
   if(wr_fd == -1) {
     printf("%s\n", strerror(errno));
     exit(1);
