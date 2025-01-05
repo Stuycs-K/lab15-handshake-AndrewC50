@@ -25,7 +25,8 @@ int main() {
   signal(SIGINT, sighandler);
   while(1) {
     // sleep(1);
-    if(read(from_server, &rec, sizeof(int)) == -1) {
+    if(read(from_server, &rec, sizeof(int)) <= 0) {
+      printf("Connection closed\n");
       break;
     }
     printf("Recieved %d from server\n", rec);

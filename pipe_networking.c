@@ -10,12 +10,10 @@
   returns the file descriptor for the upstream pipe.
   =========================*/
 int server_setup() {
-  //Not used: need PPid in server_handshake
   mkfifo(WKP, 0666);
+  printf("Waiting for connection\n");
   int wr_fd = open(WKP, O_RDONLY);
-  if(wr_fd == -1) {
-    printf("%s\n", strerror(errno));
-  }
+  if(wr_fd == -1) printf("%s\n", strerror(errno));
   remove(WKP);
   return wr_fd;
 }
@@ -30,45 +28,52 @@ int server_setup() {
   returns the file descriptor for the upstream pipe (see server setup).
   =========================*/
 int server_handshake(int *to_client) {
-  printf("Server\n");
   char cl_pid[256];
-  //Block until connection
-  int rd_fd = server_setup();
+  int rd_fd, wr_fd;
+
+  rd_fd = server_setup();
   if(rd_fd == -1) {
-    printf("Error Check%s\n", strerror(errno));
-    exit(1);
-  }
-  if(read(rd_fd, cl_pid, sizeof(cl_pid)) < 0) {
-    printf("Reading %s\n", strerror(errno));
-    exit(1);
+    printf("Init read%s\n", strerror(errno));
+    return -1;
   }
 
-  //Open cl_pid, which contains the pid to open for the pp. Opens with write permissions
-  // int wr_fd = open(wkp, O_WRONLY);
-  int wr_fd = open(cl_pid, O_WRONLY);
-  char message[256];
-  snprintf(message, sizeof(message), "%d", rand());
-  if(write(wr_fd, message, strlen(message)) == -1) {
-    printf("Writing %s\n", strerror(errno));
-    exit(1);
+  printf("Reading from WKP\n");
+  if(read(rd_fd, cl_pid, sizeof(cl_pid)) < 0) {
+    printf("Reading %s\n", strerror(errno));
+    return -1;
   }
+
+  printf("Opening PP %s\n", cl_pid);
+  wr_fd = open(cl_pid, O_WRONLY);
   if(wr_fd == -1) {
-    printf("%s\n", strerror(errno));
+    printf("Init write%s\n", strerror(errno));
+    return -1;
   }
+
   char synack[256];
-  printf("Server reading from fd %d\n", rd_fd);
-  if (read(rd_fd, synack, sizeof(synack)) < 0) {
-    printf("%s\n", strerror(errno));
-    exit(1);
+  snprintf(synack, sizeof(synack), "%d", rand());
+  printf("Writing synack %s to client\n", synack);
+  if(write(wr_fd, synack, strlen(synack)) == -1) {
+    printf("Writing %s\n", strerror(errno));
+    return -1;
   }
+
+  char ack[256];
+  if (read(rd_fd, ack, sizeof(ack)) < 0) {
+    printf("%s\n", strerror(errno));
+    return -1;
+  }
+  printf("Server received ack %s from client\n", ack);
+
   char expected[256];
-  strcpy(expected, message);
+  strcpy(expected, synack);
   strcat(expected, "1");
-  if (strcmp(synack, expected) == 0) {
-    printf("Handshake Complete, message was: %s\n", synack);
+  if (strcmp(ack, expected) == 0) {
+    printf("Handshake Complete, ack was: %s\n", synack);
   } else {
     printf("Error in handshake from client to server\n");
   }
+
   *to_client = wr_fd;
   return rd_fd;
 }
@@ -87,40 +92,43 @@ int client_handshake(int *to_server) {
   char pid [256];
   snprintf(pid, sizeof(pid), "%d", getpid());
   mkfifo(pid, 0666);
-  // Write to WKP
-  printf("Client handshake\n");
-  int wr_fd = open(WKP, O_WRONLY);
+  int wr_fd, rd_fd;
+  wr_fd = open(WKP, O_WRONLY);
+  printf("Opening WKP\n");
   if(wr_fd == -1) {
-    printf("%s\n", strerror(errno));
-    exit(1);
+    printf("Open writing %s\n", strerror(errno));
+    return -1;
   }
-  int bytes = write(wr_fd, pid, 255);
-  printf("Client wrote %d bytes\n", bytes);
 
-  int rd_fd = open(pid, O_RDONLY);
+  if(write(wr_fd, pid, 255) == -1) {
+    printf("Writing pid %s\n", strerror(errno));
+    return -1;
+  }
+  printf("Client wrote pid to server %s\n", pid);
+
+  printf("Opening PP %s\n", pid);
+  rd_fd = open(pid, O_RDONLY);
   if(rd_fd == -1) {
-    printf("%s\n", strerror(errno));
-    exit(1);
+    printf("Open reading%s\n", strerror(errno));
+    return -1;
   }
-  char pp_buff[256];
-  if(read(rd_fd, pp_buff, sizeof(pp_buff)) < 0) {
-    printf("%s\n", strerror(errno));
-    exit(1);
-  }
-  printf("Recieved message on pp from server: %s\n", pp_buff);
-  // int wr_fd = open(pid, O_WRONLY);
-  if(wr_fd == -1) {
-    printf("%s\n", strerror(errno));
-    exit(1);
-  }
-  char synack[256];
-  snprintf(synack, 255, "%s1", pp_buff);
-  int bytes_wrote = write(wr_fd, synack, 255);
-  if(bytes_wrote == -1) {
-    printf("%s\n", strerror(errno));
-    exit(1);
-  }
+  printf("Removing PP\n");
   remove(pid);
+
+  char synack[256];
+  if(read(rd_fd, synack, sizeof(synack)) == -1) {
+    printf("%s\n", strerror(errno));
+    return -1;
+  }
+  printf("Recieved synack from server: %s\n", synack);
+
+  char ack[256];
+  snprintf(ack, 255, "%s1", synack);
+  printf("Writing ACK to server: %s\n", ack);
+  if(write(wr_fd, ack, 255) == -1) {
+    printf("Writing ack %s\n", strerror(errno));
+    return -1;
+  }
   *to_server = wr_fd;
   return rd_fd;
 }
