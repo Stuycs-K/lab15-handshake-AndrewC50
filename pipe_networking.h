@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 
 #ifndef NETWORKING_H
 #define NETWORKING_H
@@ -20,7 +21,6 @@
 #define ACK 2
 #define MESSAGE 3
 #define EXIT 4
-#define wkp "wkp"
 
 
 int server_handshake(int *to_client);
