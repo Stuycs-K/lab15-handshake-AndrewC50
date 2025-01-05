@@ -1,11 +1,11 @@
 #include "pipe_networking.h"
 
-static void sighandler (int signo) {
-  if (signo == SIGINT) {
-    remove(WKP);
-  }
-  exit(1);
-}
+// static void sighandler (int signo) {
+//   if (signo == SIGINT) {
+//     remove(WKP);
+//   }
+//   exit(1);
+// }
 
 int main() {
 
@@ -22,7 +22,7 @@ int main() {
   // read(from_server, &rec, sizeof(int));
   // printf("Read %d\n", rec);
   int rec = 0;
-  signal(SIGINT, sighandler);
+  // signal(SIGINT, sighandler);
   while(1) {
     // sleep(1);
     if(read(from_server, &rec, sizeof(int)) <= 0) {

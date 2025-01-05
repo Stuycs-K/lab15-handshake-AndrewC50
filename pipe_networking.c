@@ -12,10 +12,10 @@
 int server_setup() {
   mkfifo(WKP, 0666);
   printf("Waiting for connection\n");
-  int wr_fd = open(WKP, O_RDONLY);
-  if(wr_fd == -1) printf("%s\n", strerror(errno));
+  int rd_fd = open(WKP, O_RDONLY);
+  if(rd_fd == -1) printf("%s\n", strerror(errno));
   remove(WKP);
-  return wr_fd;
+  return rd_fd;
 }
 
 /*=========================
