@@ -1,34 +1,25 @@
 #include "pipe_networking.h"
 
-// static void sighandler (int signo) {
-//   if (signo == SIGINT) {
-//     remove(WKP);
-//   }
-//   exit(1);
-// }
-
 int main() {
 
   int to_server;
   int from_server;
 
   from_server = client_handshake( &to_server );
-  //
-  // int wr = 5;
-  // int rec = 0;
-  // printf("Writing %d\n", wr, to_server);
-  // write(to_server, &wr, sizeof(int));
-  // sleep(1);
-  // read(from_server, &rec, sizeof(int));
-  // printf("Read %d\n", rec);
   int rec = 0;
-  // signal(SIGINT, sighandler);
   while(1) {
-    // sleep(1);
-    if(read(from_server, &rec, sizeof(int)) <= 0) {
-      printf("Connection closed\n");
+    sleep(1);
+    srand(time(NULL));
+    char message[256];
+    snprintf(message, 255, "Hi, my pid is %d, sending message to server", getpid());
+    printf("Sending message to server: %s\n", message);
+    if(write(to_server, message, strlen(message) + 1) < 0) {
+      printf("Error Sending message\n");
       break;
     }
-    printf("Recieved %d from server\n", rec);
   }
+  close(to_server);
+  close(from_server);
+
+
 }
