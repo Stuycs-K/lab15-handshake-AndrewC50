@@ -116,7 +116,7 @@ int client_handshake(int *to_server) {
   remove(pid);
 
   char synack[256];
-  if(read(rd_fd, synack, sizeof(synack)) == -1) {
+  if(read(rd_fd, synack, strlen(synack)) == -1) {
     printf("%s\n", strerror(errno));
     return -1;
   }
