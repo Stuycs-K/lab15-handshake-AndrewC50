@@ -125,7 +125,7 @@ int client_handshake(int *to_server) {
   char ack[256];
   snprintf(ack, 255, "%s1", synack);
   printf("Writing ACK to server: %s\n", ack);
-  if(write(wr_fd, ack, 255) == -1) {
+  if(write(wr_fd, ack, strlen(ack) + 1) == -1) {
     printf("Writing ack %s\n", strerror(errno));
     return -1;
   }
