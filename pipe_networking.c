@@ -165,7 +165,7 @@ void server_handshake_half(int *to_client, int from_client) {
   }
 
   char ack[256];
-  int bytes = read(rd_fd, ack, sizeof(ack);
+  int bytes = read(rd_fd, ack, sizeof(ack));
   if (bytes < 0) {
     printf("%s\n", strerror(errno));
   }
